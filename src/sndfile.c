@@ -277,7 +277,9 @@ ErrorStruct SndfileErrors [] =
 	{	SFE_FILENAME_TOO_LONG	, "Error : Supplied filename too long." },
 	{	SFE_NEGATIVE_RW_LEN		, "Error : Length parameter passed to read/write is negative." },
 
-	{	SFE_OPUS_BAD_SAMPLERATE	, "Error : Opus only supports sample rates of 8000, 12000, 16000, 24000 and 48000." },
+	{	SFE_OPUS_BAD_SAMPLERATE	, "Error : Opus only supports sample rates of 8000, 12000, 16000, 24000, and 48000." },
+
+	{	SFE_MPEG_BAD_SAMPLERATE	, "Error : MPEG-1/2/2.5 only supports sample rates of 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, and 48000." },
 
 	{	SFE_MAX_ERROR			, "Maximum error number." },
 	{	SFE_MAX_ERROR + 1		, NULL }
@@ -882,6 +884,16 @@ sf_format_check	(const SF_INFO *info)
 				if (subformat == SF_FORMAT_ULAW || subformat == SF_FORMAT_ALAW)
 					return 1 ;
 				if (subformat == SF_FORMAT_FLOAT || subformat == SF_FORMAT_DOUBLE)
+					return 1 ;
+				break ;
+
+		case SF_FORMAT_MP3 :
+				if (info->channels > 2)
+					return 0 ;
+				if (endian != SF_ENDIAN_FILE)
+					return 0 ;
+				/* TODO */
+				if (subformat == SF_FORMAT_MPEG_LAYER_I || subformat == SF_FORMAT_MPEG_LAYER_II || subformat == SF_FORMAT_MPEG_LAYER_III)
 					return 1 ;
 				break ;
 		default : break ;
@@ -2668,6 +2680,13 @@ format_from_extension (SF_PRIVATE *psf)
 		psf->sf.samplerate = 8000 ;
 		format = SF_FORMAT_RAW | SF_FORMAT_GSM610 ;
 		}
+	else if (strcmp (cptr, "mp3") == 0)
+	{	/*
+		 * MPEG streams are quite tollerate of crap. If we couldn't identify a
+		 * MP3 stream, but it has a .mp3 extension, let libmpg123 have a try.
+		 */
+		format = SF_FORMAT_MP3 ;
+		}
 
 	/* For RAW files, make sure the dataoffset if set correctly. */
 	if ((SF_CONTAINER (format)) == SF_FORMAT_RAW)
@@ -2776,9 +2795,26 @@ guess_file_type (SF_PRIVATE *psf)
 	if (buffer [0] == MAKE_MARKER ('R', 'F', '6', '4') && buffer [2] == MAKE_MARKER ('W', 'A', 'V', 'E'))
 		return SF_FORMAT_RF64 ;
 
+	if ((buffer [0] & MAKE_MARKER (0xFF, 0xE0, 0, 0)) == MAKE_MARKER (0xFF, 0xE0, 0, 0) && /* Frame sync */
+		(buffer [0] & MAKE_MARKER (0, 0x18, 0, 0)) != MAKE_MARKER (0, 0x08, 0, 0) && /* Valid MPEG version */
+		(buffer [0] & MAKE_MARKER (0, 0x06, 0, 0)) != MAKE_MARKER (0, 0, 0, 0) && /* Valid layer description */
+		(buffer [0] & MAKE_MARKER (0, 0, 0xF0, 0)) != MAKE_MARKER (0, 0, 0xF0, 0) && /* Valid bitrate */
+		(buffer [0] & MAKE_MARKER (0, 0, 0x0C, 0)) != MAKE_MARKER (0, 0, 0x0C, 0)) /* Valid samplerate */
+		return SF_FORMAT_MP3 ;
+
 	if (buffer [0] == MAKE_MARKER ('I', 'D', '3', 2) || buffer [0] == MAKE_MARKER ('I', 'D', '3', 3)
 			|| buffer [0] == MAKE_MARKER ('I', 'D', '3', 4))
 	{	psf_log_printf (psf, "Found 'ID3' marker.\n") ;
+
+		/* Guess MP3, try and open it as such. Allows libmpg123 to parse the ID3v2 headers */
+		if (psf->file.mode == SFM_READ)
+		{	if (mp3_open (psf) == 0)
+				return SF_FORMAT_MP3 | ((~SF_FORMAT_TYPEMASK) & psf->sf.format) ;
+			else if (psf->codec_close)
+				psf->codec_close (psf) ;
+			} ;
+
+		/* Otherwise, seek to after the ID3 header */
 		if (id3_skip (psf))
 			return guess_file_type (psf) ;
 		return 0 ;
@@ -3185,6 +3221,10 @@ psf_open_file (SF_PRIVATE *psf, SF_INFO *sfinfo)
 				error = mpc2k_open (psf) ;
 				break ;
 
+		case	SF_FORMAT_MP3 :
+				error = mp3_open (psf) ;
+				break ;
+
 		/* Lite remove end */
 
 		default :
@@ -3205,6 +3245,7 @@ psf_open_file (SF_PRIVATE *psf, SF_INFO *sfinfo)
 				/* Actual embedded files. */
 				break ;
 
+			case SF_FORMAT_MP3 :
 			case SF_FORMAT_FLAC :
 				/* Flac with an ID3v2 header? */
 				break ;
