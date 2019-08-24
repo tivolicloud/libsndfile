@@ -885,12 +885,12 @@ sf_format_check	(const SF_INFO *info)
 					return 1 ;
 				break ;
 
-		case SF_FORMAT_MP3 :
+		case SF_FORMAT_MPEG :
 				if (info->channels > 2)
 					return 0 ;
 				if (endian != SF_ENDIAN_FILE)
 					return 0 ;
-				if (subformat == SF_FORMAT_MPEG_III)
+				if (subformat == SF_FORMAT_MPEG_I || subformat == SF_FORMAT_MPEG_II || SF_FORMAT_MPEG_III)
 					return 1 ;
 				break ;
 		default : break ;
@@ -2785,8 +2785,9 @@ guess_file_type (SF_PRIVATE *psf)
 	if (buffer [0] == MAKE_MARKER ('R', 'F', '6', '4') && buffer [2] == MAKE_MARKER ('W', 'A', 'V', 'E'))
 		return SF_FORMAT_RF64 ;
 
-	if ((buffer [0] & MAKE_MARKER (0xFF, 0xE0, 0, 0)) == MAKE_MARKER (0xFF, 0xE0, 0, 0))
-		return SF_FORMAT_MP3 | SF_FORMAT_MPEG_III ;
+	if ((buffer [0] & MAKE_MARKER (0xFF, 0xE0, 0, 0)) == MAKE_MARKER (0xFF, 0xE0, 0, 0) &&
+		(buffer [0] & MAKE_MARKER (0, 0, 0xF0, 0)) != MAKE_MARKER (0, 0, 0xF0, 0))
+		return SF_FORMAT_MPEG ;
 
 	if (buffer [0] == MAKE_MARKER ('I', 'D', '3', 3))
 	{	psf_log_printf (psf, "Found 'ID3' marker.\n") ;
@@ -3196,7 +3197,7 @@ psf_open_file (SF_PRIVATE *psf, SF_INFO *sfinfo)
 				error = mpc2k_open (psf) ;
 				break ;
 
-		case	SF_FORMAT_MP3 :
+		case	SF_FORMAT_MPEG :
 				error = mpeg_open (psf) ;
 				break ;
 
@@ -3221,7 +3222,6 @@ psf_open_file (SF_PRIVATE *psf, SF_INFO *sfinfo)
 				break ;
 
 			case SF_FORMAT_FLAC :
-			case SF_FORMAT_MP3 :
 				/* Flac with an ID3v2 header? */
 				break ;
 
