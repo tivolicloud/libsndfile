@@ -760,6 +760,8 @@ enum
 
 	SFE_OPUS_BAD_SAMPLERATE,
 
+	SFE_MPEG_BAD_SAMPLERATE,
+
 	SFE_MAX_ERROR			/* This must be last in list. */
 } ;
 

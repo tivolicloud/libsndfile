@@ -277,7 +277,9 @@ ErrorStruct SndfileErrors [] =
 	{	SFE_FILENAME_TOO_LONG	, "Error : Supplied filename too long." },
 	{	SFE_NEGATIVE_RW_LEN		, "Error : Length parameter passed to read/write is negative." },
 
-	{	SFE_OPUS_BAD_SAMPLERATE	, "Error : Opus only supports sample rates of 8000, 12000, 16000, 24000 and 48000." },
+	{	SFE_OPUS_BAD_SAMPLERATE	, "Error : Opus only supports sample rates of 8000, 12000, 16000, 24000, and 48000." },
+
+	{	SFE_MPEG_BAD_SAMPLERATE	, "Error : MPEG-1/2/2.5 only supports sample rates of 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, and 48000." },
 
 	{	SFE_MAX_ERROR			, "Maximum error number." },
 	{	SFE_MAX_ERROR + 1		, NULL }

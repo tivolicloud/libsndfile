@@ -228,7 +228,7 @@ mpeg_encoder_init (SF_PRIVATE *psf, int vbr)
 	lame_set_in_samplerate (pmpeg->lamef, psf->sf.samplerate) ;
 	lame_set_num_channels (pmpeg->lamef, psf->sf.channels) ;
 	if (lame_set_out_samplerate (pmpeg->lamef, psf->sf.samplerate) < 0)
-		/* TODO */ return SFE_BAD_OPEN_FORMAT ;
+		return SFE_MPEG_BAD_SAMPLERATE ;
 
 	lame_set_quality (pmpeg->lamef, 2) ;
 	lame_set_write_id3tag_automatic (pmpeg->lamef, 0) ;
