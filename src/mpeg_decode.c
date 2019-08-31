@@ -24,9 +24,6 @@
 #include	"sndfile.h"
 #include	"common.h"
 
-/* TODO */
-#define HAVE_MPG123 1
-
 #if (ENABLE_EXPERIMENTAL_CODE && HAVE_MPG123)
 
 #include "mpeg.h"
@@ -35,7 +32,7 @@
 
 typedef struct
 {	mpg123_handle *pmh ;
-
+	/* TODO: Other members? Remove this struct? */
 } MPEG_DEC_PRIVATE ;
 
 static int mpeg_dec_close (SF_PRIVATE *psf) ;
@@ -106,7 +103,9 @@ mpeg_dec_read_s (SF_PRIVATE *psf, short *ptr, sf_count_t len)
 		error = mpg123_read (pmp3d->pmh, ubuf.ucbuf, bufferlen * sizeof (float), &done) ;
 
 		if (error != MPG123_OK)
+		{	/* TODO: handle decoding error */
 			break ;
+			}
 
 		done /= sizeof (float) ;
 
@@ -195,7 +194,7 @@ mpeg_dec_read_d (SF_PRIVATE *psf, double *ptr, sf_count_t len)
 	int error ;
 	double normfact ;
 
-	normfact = (psf->norm_double == SF_TRUE) ? 1.0 / ((double) 0x8000) : 1.0 ;
+	normfact = (psf->norm_double == SF_TRUE) ? 1.0 : (double) 0x8000 ;
 
 	error = mpg123_read (pmp3d->pmh, (unsigned char *) ptr, len * sizeof (float), &done) ;
 	if (error != MPG123_OK)
@@ -235,15 +234,11 @@ mpeg_dec_fill_sfinfo (mpg123_handle *mh, SF_INFO *info)
 	off_t length ;
 
 	error = mpg123_getformat (mh, &rate, &channels, &encoding) ;
-	if (error == MPG123_OK)
-	{	info->samplerate = rate ;
-		info->channels = channels ;
+	if (error != MPG123_OK)
+		return error ;
 
-		/* Force 32-bit float samples. */
-		if (encoding != MPG123_ENC_FLOAT_32)
-		{	error = mpg123_format (mh, rate, channels, MPG123_ENC_FLOAT_32) ;
-			} ;
-		} ;
+	info->samplerate = rate ;
+	info->channels = channels ;
 
 	length = mpg123_length (mh) ;
 	if (length >= 0)
@@ -255,8 +250,50 @@ mpeg_dec_fill_sfinfo (mpg123_handle *mh, SF_INFO *info)
 		info->seekable = SF_FALSE ;
 		}
 
+	/* Force 32-bit float samples. */
+	if (encoding != MPG123_ENC_FLOAT_32)
+	{	error = mpg123_format (mh, rate, channels, MPG123_ENC_FLOAT_32) ;
+		} ;
+
 	return error ;
 } /* mpeg_dec_fill_sfinfo */
+
+static void
+mpeg_dec_print_frameinfo (SF_PRIVATE *psf, const struct mpg123_frameinfo *fi)
+{	psf_log_printf (psf, "  version: %s\n",
+		fi->version == MPG123_1_0 ? "MPEG 1.0" :
+		fi->version == MPG123_2_0 ? "MPEG 2.0" :
+		fi->version == MPG123_2_5 ? "MPEG 2.5" : "?") ;
+	psf_log_printf (psf, "  layer: %d\n", fi->layer) ;
+	psf_log_printf (psf, "  rate: %d\n", fi->rate) ;
+	psf_log_printf (psf, "  mode: %s\n",
+		fi->mode == MPG123_M_STEREO ? "stereo" :
+		fi->mode == MPG123_M_JOINT ? "joint stereo" :
+		fi->mode == MPG123_M_DUAL ? "dual channel" :
+		fi->mode == MPG123_M_MONO ? "mono" : "?") ;
+	psf_log_printf (psf, "  mode ext: %d\n", fi->mode_ext) ;
+	psf_log_printf (psf, "  framesize: %d\n", fi->framesize) ;
+	psf_log_printf (psf, "  crc: %c\n", fi->flags & MPG123_CRC ? '1' : '0') ;
+	psf_log_printf (psf, "  copyright flag: %c\n", fi->flags & MPG123_COPYRIGHT ? '1' : '0') ;
+	psf_log_printf (psf, "  private flag: %c\n", fi->flags & MPG123_PRIVATE ? '1' : '0') ;
+	psf_log_printf (psf, "  original flag: %c\n", fi->flags & MPG123_ORIGINAL ? '1' : '0') ;
+	psf_log_printf (psf, "  emphasis: %d\n", fi->emphasis) ;
+	psf_log_printf (psf, "  bitrate mode: ") ;
+	switch (fi->vbr)
+	{	case MPG123_CBR :
+			psf_log_printf (psf, "constant\n") ;
+			break ;
+		case MPG123_VBR :
+			psf_log_printf (psf, "variable\n") ;
+			break ;
+
+		case MPG123_ABR :
+			psf_log_printf (psf, "average\n") ;
+			psf_log_printf (psf, "  ABR target: %d\n", fi->abr_rate) ;
+			break ;
+		} ;
+	psf_log_printf (psf, "  bitrate: %d kbps\n", fi->bitrate) ;
+} /* mpeg_dec_print_frameinfo */
 
 int
 mpeg_decoder_init (SF_PRIVATE *psf)
@@ -307,9 +344,16 @@ mpeg_decoder_init (SF_PRIVATE *psf)
 		return SFE_INTERNAL ;
 		} ;
 
+	if (mpeg_dec_fill_sfinfo (pmp3d->pmh, &psf->sf) != MPG123_OK)
+	{	/* TODO: Better error code here */
+		psf_log_printf (psf, "Cannot get MPEG decoder configuration: %s\n", mpg123_plain_strerror (error)) ;
+		return SFE_INTERNAL ;
+		} ;
+
 	error = mpg123_info (pmp3d->pmh, &fi) ;
 	if (error != MPG123_OK)
-	{	psf_log_printf (psf, "Cannot get MP3 frame info: %s\n", mpg123_plain_strerror (error)) ;
+	{	psf_log_printf (psf, "Cannot get MPEG frame info: %s\n", mpg123_plain_strerror (error)) ;
+		/* TODO: Better error code here */
 		return SFE_INTERNAL ;
 		}
 
@@ -317,45 +361,9 @@ mpeg_decoder_init (SF_PRIVATE *psf)
 	{	case 1 : psf->sf.format |= SF_FORMAT_MPEG_I ; break ;
 		case 2 : psf->sf.format |= SF_FORMAT_MPEG_II ; break ;
 		case 3 : psf->sf.format |= SF_FORMAT_MPEG_III ; break ;
-		default : break ;
+		default : /* Nothing: A lack of subformat will cause an error later. */ break ;
 		} ;
-
-	psf_log_printf (psf, "  version: %s\n",
-		fi.version == MPG123_1_0 ? "MPEG 1.0" :
-		fi.version == MPG123_2_0 ? "MPEG 2.0" :
-		fi.version == MPG123_2_5 ? "MPEG 2.5" : "?") ;
-	psf_log_printf (psf, "  layer: %d\n", fi.layer) ;
-	psf_log_printf (psf, "  rate: %d\n", fi.rate) ;
-	psf_log_printf (psf, "  mode: %s\n",
-		fi.mode == MPG123_M_STEREO ? "stereo" :
-		fi.mode == MPG123_M_JOINT ? "joint stereo" :
-		fi.mode == MPG123_M_DUAL ? "dual channel" :
-		fi.mode == MPG123_M_MONO ? "mono" : "?") ;
-	psf_log_printf (psf, "  mode ext: %d\n", fi.mode_ext) ;
-	psf_log_printf (psf, "  framesize: %d\n", fi.framesize) ;
-	psf_log_printf (psf, "  crc: %c\n", fi.flags & MPG123_CRC ? '1' : '0') ;
-	psf_log_printf (psf, "  copyright flag: %c\n", fi.flags & MPG123_COPYRIGHT ? '1' : '0') ;
-	psf_log_printf (psf, "  private flag: %c\n", fi.flags & MPG123_PRIVATE ? '1' : '0') ;
-	psf_log_printf (psf, "  original flag: %c\n", fi.flags & MPG123_ORIGINAL ? '1' : '0') ;
-	psf_log_printf (psf, "  emphasis: %d\n", fi.emphasis) ;
-	psf_log_printf (psf, "  bitrate mode: ") ;
-	switch (fi.vbr)
-	{	case MPG123_CBR :
-			psf_log_printf (psf, "constant\n") ;
-			break ;
-		case MPG123_VBR :
-			psf_log_printf (psf, "variable\n") ;
-			break ;
-
-		case MPG123_ABR :
-			psf_log_printf (psf, "average\n") ;
-			psf_log_printf (psf, "  ABR target: %d\n", fi.abr_rate) ;
-			break ;
-		} ;
-	psf_log_printf (psf, "  bitrate: %d kbps\n", fi.bitrate) ;
-
-	mpeg_dec_fill_sfinfo (pmp3d->pmh, &psf->sf) ;
-
+	mpeg_dec_print_frameinfo (psf, &fi) ;
 
 	psf->read_short = mpeg_dec_read_s ;
 	psf->read_int	= mpeg_dec_read_i ;
@@ -375,10 +383,9 @@ mpeg_decoder_init (SF_PRIVATE *psf)
 
 #else /* ENABLE_EXPERIMENTAL_CODE && HAVE_MPG123 */
 
-int mpeg_dec_open (SF_PRIVATE *psf)
-{
-	psf_log_printf (psf, "This version of libsndfile was compiled without MP3 decode support.\n") ;
+int mpeg_decoder_init (SF_PRIVATE *psf)
+{	psf_log_printf (psf, "This version of libsndfile was compiled without MP3 decode support.\n") ;
 	return SFE_UNIMPLEMENTED ;
-} /* mpeg_dec_open */
+} /* mpeg_decoder_init */
 
 #endif
