@@ -1033,6 +1033,7 @@ typedef struct
 
 int audio_detect (SF_PRIVATE * psf, AUDIO_DETECT *ad, const unsigned char * data, int datalen) ;
 int id3_skip (SF_PRIVATE * psf) ;
+const char *id3_lookup_v1_genre (int number) ;
 
 void	alac_get_desc_chunk_items (int subformat, uint32_t *fmt_flags, uint32_t *frames_per_packet) ;
 

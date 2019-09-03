@@ -30,6 +30,11 @@
 
 #include <mpg123.h>
 
+/* TODO
+ * ID3v1 Genre support.
+ * ID3v2 support.
+ */
+
 typedef struct
 {	mpg123_handle *pmh ;
 	/* TODO: Other members? Remove this struct? */
@@ -45,17 +50,12 @@ static ssize_t
 mpeg_dec_io_read (void *priv, void *buffer, size_t nbytes)
 {	SF_PRIVATE *psf = (SF_PRIVATE *) priv ;
 
-	fprintf (stderr, "Reading %zd bytes\n", nbytes) ;
-
 	return psf_fread (buffer, 1, nbytes, psf) ;
 }
 
 static off_t
 mpeg_dec_io_lseek (void *priv, off_t offset, int whence)
 {	SF_PRIVATE *psf = (SF_PRIVATE *) priv ;
-
-	fprintf (stderr, "Seeking to %zd from %s\n", offset,
-		whence == SEEK_CUR ? "CUR" : whence == SEEK_END ? "END" : "ABS") ;
 
 	return psf_fseek (psf, offset, whence) ;
 }
@@ -295,6 +295,75 @@ mpeg_dec_print_frameinfo (SF_PRIVATE *psf, const struct mpg123_frameinfo *fi)
 	psf_log_printf (psf, "  bitrate: %d kbps\n", fi->bitrate) ;
 } /* mpeg_dec_print_frameinfo */
 
+/*
+ * Like strlcpy, except the size argument is the maximum size of the input,
+ * always null terminates the output string. Thus, up to size + 1 bytes may be
+ * written.
+ *
+ * Returns the length of the copied string.
+ */
+static int
+strcpy_inbounded (char *dest, size_t size, const char *src)
+{	char *c = memccpy (dest, src, '\0', size) ;
+	if (!c)
+		c = dest + size ;
+	*c = '\0' ;
+	return c - dest ;
+}
+
+static void
+mpeg_decoder_read_strings (SF_PRIVATE *psf)
+{	MPEG_DEC_PRIVATE *pmp3d = (MPEG_DEC_PRIVATE *) psf->codec_data ;
+	mpg123_id3v1 *v1_tags ;
+	mpg123_id3v2 *v2_tags ;
+	const char *genre ;
+	char buf [31] ;
+
+	if (mpg123_id3 (pmp3d->pmh, &v1_tags, &v2_tags) != MPG123_OK)
+		return ;
+
+	if (v1_tags != NULL)
+	{	psf_log_printf (psf, "ID3v1 Tags\n") ;
+
+		if (strcpy_inbounded (buf, ARRAY_LEN (v1_tags->title), v1_tags->title))
+		{	psf_log_printf (psf, "  Title       : %s\n", buf) ;
+			psf_store_string (psf, SF_STR_TITLE, buf) ;
+			} ;
+
+		if (strcpy_inbounded (buf, ARRAY_LEN (v1_tags->artist), v1_tags->artist))
+		{	psf_log_printf (psf, "  Artist      : %s\n", buf) ;
+			psf_store_string (psf, SF_STR_ARTIST, buf) ;
+			} ;
+
+		if (strcpy_inbounded (buf, ARRAY_LEN (v1_tags->album), v1_tags->album))
+		{	psf_log_printf (psf, "  Album       : %s\n", buf) ;
+			psf_store_string (psf, SF_STR_ALBUM, buf) ;
+			} ;
+
+		if (strcpy_inbounded (buf, ARRAY_LEN (v1_tags->year), v1_tags->year))
+		{	psf_log_printf (psf, "  Year        : %s\n", buf) ;
+			psf_store_string (psf, SF_STR_DATE, buf) ;
+			} ;
+
+		if (strcpy_inbounded (buf, ARRAY_LEN (v1_tags->comment), v1_tags->comment))
+		{	psf_log_printf (psf, "  Comment     : %s\n", buf) ;
+			psf_store_string (psf, SF_STR_COMMENT, buf) ;
+			} ;
+
+		/* ID3v1.1 Tracknumber */
+		if (v1_tags->comment [28] == '\0' && v1_tags->comment [29] != '\0')
+		{	snprintf (buf, ARRAY_LEN (buf), "%hhu", (unsigned) v1_tags->comment [29]) ;
+			psf_log_printf (psf, "  Tracknumber : %s\n", buf) ;
+			psf_store_string (psf, SF_STR_TRACKNUMBER, buf) ;
+			} ;
+
+		if ((genre = id3_lookup_v1_genre (v1_tags->genre)) != NULL)
+		{	psf_log_printf (psf, "  Genre       : %s\n", genre) ;
+			psf_store_string (psf, SF_STR_GENRE, genre) ;
+			} ;
+		} ;
+}
+
 int
 mpeg_decoder_init (SF_PRIVATE *psf)
 {	MPEG_DEC_PRIVATE *pmp3d ;
@@ -370,6 +439,8 @@ mpeg_decoder_init (SF_PRIVATE *psf)
 	psf->read_float	= mpeg_dec_read_f ;
 	psf->read_double = mpeg_dec_read_d ;
 	psf->seek = mpeg_dec_seek ;
+
+	mpeg_decoder_read_strings (psf) ;
 
 	/* TODO ? */
 	psf->dataoffset = 0 ;
