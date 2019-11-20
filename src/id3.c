@@ -54,7 +54,7 @@ id3_lookup_v1_genre (int number)
 }
 #else
 const char *
-id3_lookup_v1_genre (int number)
+id3_lookup_v1_genre (int UNUSED (number))
 {	return NULL ;
 	}
 #endif
