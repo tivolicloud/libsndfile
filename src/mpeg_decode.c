@@ -24,9 +24,9 @@
 #include	"sndfile.h"
 #include	"common.h"
 
-#if (ENABLE_EXPERIMENTAL_CODE && HAVE_MPG123)
+#include	"mpeg.h"
 
-#include "mpeg.h"
+#if (ENABLE_EXPERIMENTAL_CODE && HAVE_MPG123)
 
 #include <mpg123.h>
 
