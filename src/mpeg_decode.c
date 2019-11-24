@@ -177,7 +177,7 @@ mpeg_dec_read_f (SF_PRIVATE *psf, float *ptr, sf_count_t len)
 			} ;
 		} ;
 
-	return done /= sizeof (float) ;
+	return done ;
 }
 
 static inline void
