@@ -242,17 +242,13 @@ mpeg_encoder_close (SF_PRIVATE *psf)
 	if (ret > 0)
 		psf_fwrite (buffer, 1, ret, psf) ;
 
-	/* Write an IDv1 trailer */
-	ret = lame_get_id3v1_tag (pmpeg->lamef, 0, 0) ;
+	/*
+	** Write an IDv1 trailer. The whole tag structure is always 128 bytes, so is
+	** guaranteed to fit in the buffer allocated above.
+	*/
+	ret = lame_get_id3v1_tag (pmpeg->lamef, buffer, len) ;
 	if (ret > 0)
-	{	if (ret > len)
-		{	len = ret ;
-			free (buffer) ;
-			if (! (buffer = malloc (len)))
-				return SFE_MALLOC_FAILED ;
-			} ;
-		psf_log_printf (psf, "  Writing ID3v1 trailer.\n") ;
-		lame_get_id3v1_tag (pmpeg->lamef, buffer, len) ;
+	{	psf_log_printf (psf, "  Writing ID3v1 trailer.\n") ;
 		psf_fwrite (buffer, 1, ret, psf) ;
 		} ;
 
