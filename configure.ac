@@ -425,7 +425,7 @@ dnl  Check for libmpg123
 ac_cv_mpg123=0
 
 AS_IF([test "x$enable_experimental$enable_mpg123" = "xyesyes"], [
-		PKG_CHECK_MOD_VERSION([MPG123], [libmpg123 >= 1.25.11], [ac_cv_mpg123="1"], [
+		PKG_CHECK_MOD_VERSION([MPG123], [libmpg123 >= 1.25.0], [ac_cv_mpg123="1"], [
 				ac_cv_mpg123="0"
 				enable_mpg123 = "no"
 			])
