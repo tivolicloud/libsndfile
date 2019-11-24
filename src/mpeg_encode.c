@@ -41,7 +41,8 @@ typedef struct
 	unsigned char *block ;
 	size_t block_len ;
 	int frame_samples ;
-	int have_inited : 1 ;
+	double compression ;
+	int initialized : 1 ;
 } MPEG_ENC_PRIVATE ;
 
 
@@ -67,7 +68,7 @@ static sf_count_t mpeg_encode_write_double_mono (SF_PRIVATE *psf, const double *
 */
 
 int
-mpeg_encoder_init (SF_PRIVATE *psf, int vbr)
+mpeg_encoder_init (SF_PRIVATE *psf, int info_tag)
 {	MPEG_ENC_PRIVATE* pmpeg = NULL ;
 
 	if (psf->file.mode == SFM_RDWR)
@@ -86,15 +87,16 @@ mpeg_encoder_init (SF_PRIVATE *psf, int vbr)
 	if (! (pmpeg->lamef = lame_init ()))
 		return SFE_MALLOC_FAILED ;
 
+	pmpeg->compression = -1.0 ; /* Unset */
+
 	lame_set_in_samplerate (pmpeg->lamef, psf->sf.samplerate) ;
 	lame_set_num_channels (pmpeg->lamef, psf->sf.channels) ;
 	if (lame_set_out_samplerate (pmpeg->lamef, psf->sf.samplerate) < 0)
 		return SFE_MPEG_BAD_SAMPLERATE ;
 
-	lame_set_quality (pmpeg->lamef, 2) ;
 	lame_set_write_id3tag_automatic (pmpeg->lamef, 0) ;
-	lame_set_VBR (pmpeg->lamef, vbr == SF_TRUE ? 1 : 0) ;
-	if (vbr == SF_FALSE || psf->is_pipe)
+
+	if (!info_tag || psf->is_pipe)
 	{	/* Can't seek back, so force disable Xing/Lame/Info header. */
 		lame_set_bWriteVbrTag (pmpeg->lamef, 0) ;
 		} ;
@@ -190,38 +192,100 @@ mpeg_encoder_write_id3tag (SF_PRIVATE *psf)
 }
 
 int
-mpeg_encoder_set_quality (SF_PRIVATE *psf, double quality)
+mpeg_encoder_set_quality (SF_PRIVATE *psf, double compression)
 {	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE *) psf->codec_data ;
+	int bitrate_mode ;
+	int bitrate ;
+	int ret ;
 
-	if (lame_get_VBR (pmpeg->lamef) == vbr_off)
-	{	/* Constant bitrate mode. Set bitrate. */
-		switch (lame_get_version (pmpeg->lamef))
-		{	case 0 :
-				/* MPEG-1, 48, 44.1, 32 kHz. Bitrates are 32-320 kbps */
-				quality = 320.0 - (quality * (320.0 - 32.0)) ;
-				break ;
-			case 1 :
-				/* MPEG-2, 24, 22.05, 16 kHz. Bitrates are 8-160 kbps */
-				quality = 160.0 - (quality * (160.0 - 8.0)) ;
-				break ;
-			case 2 :
-				/* MPEG-2.5, 12, 11.025, 8 kHz. Bitrates are 8-64 kbps */
-				quality = 64.0 - (quality * (64.0 - 8.0)) ;
-				break ;
-			default :
-				return SF_FALSE ;
-		}
-		if (!lame_set_brate (pmpeg->lamef, (int) quality))
-			return SF_TRUE ;
+	if (compression < 0.0 || compression > 1.0)
+		return SF_FALSE ;
+
+	/*
+	** Save the compression setting, as we may have to re-interpret it if
+	** the bitrate mode changes.
+	*/
+	pmpeg->compression = compression ;
+
+	bitrate_mode = mpeg_encoder_get_bitrate_mode (psf) ;
+	if (bitrate_mode == SF_BITRATE_MODE_VARIABLE)
+	{	ret = lame_set_VBR_quality (pmpeg->lamef, compression * 10.0) ;
 		}
 	else
-	{	/* Variable bitrate mode. Set quality. Range is 0.0 - 10.0 */
-		if (!lame_set_VBR_quality (pmpeg->lamef, quality * 10.0))
-			return SF_TRUE ;
+	{	/* Choose a bitrate. */
+		if (psf->sf.samplerate >= 32000)
+		{	/* MPEG-1.0, bitrates are [32,320] kbps */
+			bitrate = (320.0 - (compression * (320.0 - 32.0))) ;
+			}
+		else if (psf->sf.samplerate >= 16000)
+		{	/* MPEG-2.0, bitrates are [8,160] */
+			bitrate = (160.0 - (compression * (160.0 - 8.0))) ;
+			}
+		else
+		{	/* MPEG-2.5, bitrates are [8,64] */
+			bitrate = (64.0 - (compression * (64.0 - 8.0))) ;
+			}
+
+		if (bitrate_mode == SF_BITRATE_MODE_AVERAGE)
+			ret = lame_set_VBR_mean_bitrate_kbps (pmpeg->lamef, bitrate) ;
+		else
+			ret = lame_set_brate (pmpeg->lamef, bitrate) ;
 		} ;
 
+	if (ret == LAME_OKAY)
+		return SF_TRUE ;
+
+	psf_log_printf (psf, "Failed to set lame encoder quality.\n") ;
 	return SF_FALSE ;
-}
+} /* mpeg_encoder_set_quality */
+
+int
+mpeg_encoder_set_bitrate_mode (SF_PRIVATE *psf, int mode)
+{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE *) psf->codec_data ;
+	enum vbr_mode_e vbr_mode ;
+
+	if (pmpeg->initialized)
+	{	psf->error = SFE_CMD_HAS_DATA ;
+		return SF_FALSE ;
+		} ;
+
+	switch (mode)
+	{	case SF_BITRATE_MODE_CONSTANT :	vbr_mode = vbr_off ; break ;
+		case SF_BITRATE_MODE_AVERAGE : vbr_mode = vbr_abr ; break ;
+		case SF_BITRATE_MODE_VARIABLE : vbr_mode = vbr_default ; break ;
+		default :
+			psf->error = SFE_BAD_COMMAND_PARAM ;
+			return SF_FALSE ;
+		} ;
+
+	if (lame_set_VBR (pmpeg->lamef, vbr_mode) == LAME_OKAY)
+	{	/* Re-evaluate the compression setting. */
+		return mpeg_encoder_set_quality (psf, pmpeg->compression) ;
+		} ;
+
+	psf_log_printf (psf, "Failed to set LAME vbr mode to %d.\n", vbr_mode) ;
+	return SF_FALSE ;
+} /* mpeg_encoder_set_bitrate_mode */
+
+int
+mpeg_encoder_get_bitrate_mode (SF_PRIVATE *psf)
+{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE *) psf->codec_data ;
+	enum vbr_mode_e vbr_mode ;
+
+	vbr_mode = lame_get_VBR (pmpeg->lamef) ;
+
+	if (vbr_mode == vbr_off)
+		return SF_BITRATE_MODE_CONSTANT ;
+	if (vbr_mode == vbr_abr)
+		return SF_BITRATE_MODE_AVERAGE ;
+	if (vbr_mode == vbr_default || vbr_mode < vbr_max_indicator)
+		return SF_BITRATE_MODE_VARIABLE ;
+
+	/* Something is wrong. */
+	psf->error = SFE_INTERNAL ;
+	return -1 ;
+} /* mpeg_encoder_get_bitrate_mode */
+
 
 /*-----------------------------------------------------------------------------------------------
 ** Private functions.
@@ -314,8 +378,11 @@ mpeg_encoder_log_config (SF_PRIVATE *psf, lame_t lamef)
 	switch (lame_get_VBR (lamef))
 	{	case vbr_off :
 			psf_log_printf (psf, "CBR\n") ;
-			psf_log_printf (psf, "  Compression ratio : %d\n", lame_get_compression_ratio (lamef)) ;
 			psf_log_printf (psf, "  Bitrate           : %d kbps\n", lame_get_brate (lamef)) ;
+			break ;
+		case vbr_abr :
+			psf_log_printf (psf, "ABR\n") ;
+			psf_log_printf (psf, "  Mean Bitrate      : %d kbps\n", lame_get_VBR_mean_bitrate_kbps (lamef)) ;
 			break ;
 
 		case vbr_mt :
@@ -338,7 +405,7 @@ mpeg_encoder_construct (SF_PRIVATE *psf)
 {	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE *) psf->codec_data ;
 	int frame_samples_per_channel ;
 
-	if (pmpeg->have_inited == SF_FALSE)
+	if (pmpeg->initialized == SF_FALSE)
 	{	if (lame_init_params (pmpeg->lamef) < 0)
 		{	psf_log_printf (psf, "Failed to initialize lame encoder!\n") ;
 			return SFE_INTERNAL ;
@@ -361,7 +428,7 @@ mpeg_encoder_construct (SF_PRIVATE *psf)
 		if (!pmpeg->block)
 			return SFE_MALLOC_FAILED ;
 
-		pmpeg->have_inited = SF_TRUE ;
+		pmpeg->initialized = SF_TRUE ;
 		} ;
 
 	return 0 ;

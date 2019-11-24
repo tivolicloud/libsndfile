@@ -452,6 +452,25 @@ mpeg_decoder_init (SF_PRIVATE *psf)
 	return 0 ;
 }
 
+int
+mpeg_decoder_get_bitrate_mode (SF_PRIVATE *psf)
+{	MPEG_DEC_PRIVATE *pmp3d = (MPEG_DEC_PRIVATE *) psf->codec_data ;
+	struct mpg123_frameinfo fi ;
+
+	if (mpg123_info (pmp3d->pmh, &fi) == MPG123_OK)
+	{
+		switch (fi.vbr)
+		{	case MPG123_CBR : return SF_BITRATE_MODE_CONSTANT ;
+			case MPG123_ABR : return SF_BITRATE_MODE_AVERAGE ;
+			case MPG123_VBR : return SF_BITRATE_MODE_VARIABLE ;
+			default : break ;
+			} ;
+		} ;
+
+	psf_log_printf (psf, "Cannot determine MPEG bitrate mode.\n") ;
+	return -1 ;
+} /* mpeg_decoder_get_bitrate_mode */
+
 #else /* ENABLE_EXPERIMENTAL_CODE && HAVE_MPG123 */
 
 int mpeg_decoder_init (SF_PRIVATE *psf)
