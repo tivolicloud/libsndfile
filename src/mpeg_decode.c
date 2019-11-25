@@ -364,6 +364,18 @@ mpeg_decoder_read_strings (SF_PRIVATE *psf)
 		} ;
 }
 
+static int
+mpeg_dec_byterate (SF_PRIVATE *psf)
+{	MPEG_DEC_PRIVATE *pmp3d = (MPEG_DEC_PRIVATE *) psf->codec_data ;
+	struct mpg123_frameinfo fi ;
+
+	if (mpg123_info (pmp3d->pmh, &fi) == MPG123_OK)
+		return fi.bitrate / 8 ;
+
+	return -1 ;
+
+} /* mpeg_dec_byterate */
+
 int
 mpeg_decoder_init (SF_PRIVATE *psf)
 {	MPEG_DEC_PRIVATE *pmp3d ;
@@ -438,7 +450,8 @@ mpeg_decoder_init (SF_PRIVATE *psf)
 	psf->read_int	= mpeg_dec_read_i ;
 	psf->read_float	= mpeg_dec_read_f ;
 	psf->read_double = mpeg_dec_read_d ;
-	psf->seek = mpeg_dec_seek ;
+	psf->seek		= mpeg_dec_seek ;
+	psf->byterate	= mpeg_dec_byterate ;
 
 	mpeg_decoder_read_strings (psf) ;
 
