@@ -23,7 +23,7 @@
 #include	"mpeg.h"
 
 
-#if (ENABLE_EXPERIMENTAL_CODE && HAVE_LAME)
+#if (ENABLE_EXPERIMENTAL_CODE && HAVE_MPEG)
 
 #include <lame/lame.h>
 
@@ -757,7 +757,7 @@ mpeg_encode_write_double_stereo (SF_PRIVATE *psf, const double *ptr, sf_count_t 
 	return total ;
 }
 
-#else /* ENABLE_EXPERIMENTAL_CODE && HAVE_LAME */
+#else /* ENABLE_EXPERIMENTAL_CODE && HAVE_MPEG */
 
 int
 mpeg_encoder_init (SF_PRIVATE *psf, int UNUSED (vbr))

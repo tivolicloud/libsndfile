@@ -26,7 +26,7 @@
 
 #include	"mpeg.h"
 
-#if (ENABLE_EXPERIMENTAL_CODE && HAVE_MPG123)
+#if (ENABLE_EXPERIMENTAL_CODE && HAVE_MPEG)
 
 #include <mpg123.h>
 
@@ -471,7 +471,7 @@ mpeg_decoder_get_bitrate_mode (SF_PRIVATE *psf)
 	return -1 ;
 } /* mpeg_decoder_get_bitrate_mode */
 
-#else /* ENABLE_EXPERIMENTAL_CODE && HAVE_MPG123 */
+#else /* ENABLE_EXPERIMENTAL_CODE && HAVE_MPEG */
 
 int mpeg_decoder_init (SF_PRIVATE *psf)
 {	psf_log_printf (psf, "This version of libsndfile was compiled without MP3 decode support.\n") ;

@@ -27,7 +27,7 @@
 #include	"sfendian.h"
 #include	"common.h"
 
-#if HAVE_LAME
+#if HAVE_MPEG
 #include	<lame/lame.h>
 
 struct id3v1_genre_handler_userdata
@@ -52,7 +52,7 @@ id3_lookup_v1_genre (int number)
 
 	return data.ret ;
 }
-#else
+#else /* HAVE_MPEG */
 const char *
 id3_lookup_v1_genre (int UNUSED (number))
 {	return NULL ;

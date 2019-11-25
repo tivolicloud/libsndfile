@@ -22,7 +22,7 @@
 #include	"sndfile.h"
 #include	"common.h"
 
-#if (ENABLE_EXPERIMENTAL_CODE)
+#if ENABLE_EXPERIMENTAL_CODE && HAVE_MPEG
 
 #include "mpeg.h"
 
@@ -117,7 +117,7 @@ mpeg_command (SF_PRIVATE *psf, int command, void *data, int datasize)
 	return SF_FALSE ;
 } /* mpeg_command */
 
-#else /* ENABLE_EXPERIMENTAL_CODE */
+#else /* ENABLE_EXPERIMENTAL_CODE && HAVE_MPEG*/
 
 int
 mpeg_open (SF_PRIVATE *psf)

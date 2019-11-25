@@ -71,11 +71,11 @@ src_libsndfile_la_SOURCES = src/sndfile.c src/aiff.c src/au.c src/avr.c src/caf.
 	src/common.h src/sfconfig.h src/sfendian.h src/wavlike.h src/sf_unistd.h src/ogg.h src/chanmap.h src/ogg_vcomment.h
 nodist_src_libsndfile_la_SOURCES = $(nodist_include_HEADERS)
 src_libsndfile_la_LIBADD = src/GSM610/libgsm.la src/G72x/libg72x.la src/ALAC/libalac.la \
-	src/libcommon.la $(EXTERNAL_XIPH_LIBS) -lm $(MPG123_LIBS)
+	src/libcommon.la $(EXTERNAL_XIPH_LIBS) -lm $(MPEG_LIBS)
 EXTRA_src_libsndfile_la_DEPENDENCIES = $(SYMBOL_FILES)
 
 noinst_LTLIBRARIES = src/libcommon.la
-src_libcommon_la_CFLAGS = $(EXTERNAL_XIPH_CFLAGS) $(MPG123_CFLAGS)
+src_libcommon_la_CFLAGS = $(EXTERNAL_XIPH_CFLAGS) $(MPEG_CFLAGS)
 src_libcommon_la_SOURCES = src/common.c src/file_io.c src/command.c src/pcm.c src/ulaw.c src/alaw.c \
 	src/float32.c src/double64.c src/ima_adpcm.c src/ms_adpcm.c src/gsm610.c src/dwvw.c src/vox_adpcm.c \
 	src/interleave.c src/strings.c src/dither.c src/cart.c src/broadcast.c src/audio_detect.c \
