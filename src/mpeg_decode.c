@@ -352,7 +352,7 @@ mpeg_decoder_read_strings (SF_PRIVATE *psf)
 
 		/* ID3v1.1 Tracknumber */
 		if (v1_tags->comment [28] == '\0' && v1_tags->comment [29] != '\0')
-		{	snprintf (buf, ARRAY_LEN (buf), "%hhu", (unsigned) v1_tags->comment [29]) ;
+		{	snprintf (buf, ARRAY_LEN (buf), "%hhu", (unsigned char) v1_tags->comment [29]) ;
 			psf_log_printf (psf, "  Tracknumber : %s\n", buf) ;
 			psf_store_string (psf, SF_STR_TRACKNUMBER, buf) ;
 			} ;
