@@ -354,6 +354,7 @@ echo "----------------------------------------------------------------------"
 
 # mpeg-tests
 ./tests/mpeg_test@EXEEXT@
+./tests/compression_size_test@EXEEXT@ mpeg
 
 echo "----------------------------------------------------------------------"
 echo "  $sfversion passed tests on MPEG files."

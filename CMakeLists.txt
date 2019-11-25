@@ -1422,6 +1422,7 @@ if (BUILD_TESTING)
 
 	### mpeg-tests ###
 	add_test (mpeg_test mpeg_test)
+	add_test (compression_size_test_mpeg compression_size_test mpeg)
 
 	### io-tests
 	add_test (stdio_test stdio_test)
