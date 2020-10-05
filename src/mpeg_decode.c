@@ -31,7 +31,6 @@
 #include <mpg123.h>
 
 /* TODO
- * ID3v1 Genre support.
  * ID3v2 support.
  */
 
@@ -370,7 +369,7 @@ mpeg_dec_byterate (SF_PRIVATE *psf)
 	struct mpg123_frameinfo fi ;
 
 	if (mpg123_info (pmp3d->pmh, &fi) == MPG123_OK)
-		return fi.bitrate / 8 ;
+		return (fi.bitrate + 7) / 8 ;
 
 	return -1 ;
 
@@ -385,8 +384,26 @@ mpeg_decoder_init (SF_PRIVATE *psf)
 	if (! (psf->file.mode & SFM_READ))
 		return SFE_INTERNAL ;
 
-	/* FIXME!!!! */
-	mpg123_init () ;
+	/*
+	** *** FIXME - Threading issues ***
+	**
+	** mpg123_init() is a global call that should only be called once, and
+	** should be paried with mpg123_exit() when done. libsndfile does not
+	** provide for these requirements.
+	**
+	** Currently this is a moot issue as mpg123_init() non-conditionally writes
+	** static areas with calculated data, and mpg123_exit() is a NOP, but this
+	** could change in a future version of it!
+	**
+	** From mpg123.h:
+	** > This should be called once in a non-parallel context. It is not explicitly
+	** > thread-safe, but repeated/concurrent calls still _should_ be safe as static
+	** > tables are filled with the same values anyway.
+	**
+	** Note that calling mpg123_init() after it has already completed is a NOP.
+	*/
+	if (mpg123_init () != MPG123_OK)
+		return SFE_INTERNAL ;
 
 	psf->codec_data = pmp3d = calloc (1, sizeof (MPEG_DEC_PRIVATE)) ;
 	if (!psf->codec_data)
@@ -404,15 +421,17 @@ mpeg_decoder_init (SF_PRIVATE *psf)
 		mpeg_dec_io_read, mpeg_dec_io_lseek, NULL) ;
 
 	mpg123_param (pmp3d->pmh, MPG123_REMOVE_FLAGS, MPG123_AUTO_RESAMPLE, 1.0) ;
-	mpg123_param (pmp3d->pmh, MPG123_ADD_FLAGS, MPG123_FORCE_FLOAT, 1.0) ;
+	mpg123_param (pmp3d->pmh, MPG123_ADD_FLAGS, MPG123_FORCE_FLOAT | MPG123_NO_FRANKENSTEIN, 1.0) ;
 	//mpg123_param (pmp3d->pmh, MPG123_VERBOSE, 12, 1.0) ;
 
+	psf->dataoffset = 0 ;
 	if (psf_is_pipe (psf))
 	{	mpg123_param (pmp3d->pmh, MPG123_ADD_FLAGS, MPG123_NO_PEEK_END, 1.0) ;
 		}
 	else
 	{	if (psf->fileoffset > 0)
 		{	/* TODO HACK: 'recover' the ID3v2 header. */
+			//psf->dataoffset = psf->fileoffset ;
 			psf->fileoffset = 0 ;
 			psf_fseek (psf, 0, SEEK_SET) ;
 			} ;
@@ -421,27 +440,24 @@ mpeg_decoder_init (SF_PRIVATE *psf)
 	error = mpg123_open_handle (pmp3d->pmh, psf) ;
 	if (error != MPG123_OK)
 	{	psf_log_printf (psf, "mpg123 could not open the file: %s\n", mpg123_plain_strerror (error)) ;
-		/* TODO: better error code here */
-		return SFE_INTERNAL ;
+		return SFE_BAD_FILE ;
 		} ;
 
 	if (mpeg_dec_fill_sfinfo (pmp3d->pmh, &psf->sf) != MPG123_OK)
-	{	/* TODO: Better error code here */
-		psf_log_printf (psf, "Cannot get MPEG decoder configuration: %s\n", mpg123_plain_strerror (error)) ;
+	{	psf_log_printf (psf, "Cannot get MPEG decoder configuration: %s\n", mpg123_plain_strerror (error)) ;
 		return SFE_INTERNAL ;
 		} ;
 
 	error = mpg123_info (pmp3d->pmh, &fi) ;
 	if (error != MPG123_OK)
 	{	psf_log_printf (psf, "Cannot get MPEG frame info: %s\n", mpg123_plain_strerror (error)) ;
-		/* TODO: Better error code here */
 		return SFE_INTERNAL ;
 		}
 
 	switch (fi.layer)
-	{	case 1 : psf->sf.format |= SF_FORMAT_MPEG_I ; break ;
-		case 2 : psf->sf.format |= SF_FORMAT_MPEG_II ; break ;
-		case 3 : psf->sf.format |= SF_FORMAT_MPEG_III ; break ;
+	{	case 1 : psf->sf.format |= SF_FORMAT_MPEG_LAYER_I ; break ;
+		case 2 : psf->sf.format |= SF_FORMAT_MPEG_LAYER_II ; break ;
+		case 3 : psf->sf.format |= SF_FORMAT_MPEG_LAYER_III ; break ;
 		default : /* Nothing: A lack of subformat will cause an error later. */ break ;
 		} ;
 	mpeg_dec_print_frameinfo (psf, &fi) ;
@@ -455,8 +471,6 @@ mpeg_decoder_init (SF_PRIVATE *psf)
 
 	mpeg_decoder_read_strings (psf) ;
 
-	/* TODO ? */
-	psf->dataoffset = 0 ;
 	if (psf->filelength != SF_COUNT_MAX)
 		psf->datalength = psf->filelength - psf->dataoffset ;
 	else
