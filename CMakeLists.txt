@@ -283,7 +283,7 @@ add_library (sndfile
 	src/nms_adpcm.c
 	src/mpeg.c
 	src/mpeg_decode.c
-	src/mpeg_encode.c
+	src/mpeg_l3_encode.c
 	src/GSM610/config.h
 	src/GSM610/gsm.h
 	src/GSM610/gsm610_priv.h

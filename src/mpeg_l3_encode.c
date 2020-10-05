@@ -1,6 +1,6 @@
 /*
+** Copyright (C) 2020 Arthur Taylor <art@ified.ca>
 ** Copyright (C) 2019 Erik de Castro Lopo <erikd@mega-nerd.com>
-** Copyright (C) 2019 Arthur Taylor <art@ified.ca>
 **
 ** This program is free software ; you can redistribute it and/or modify
 ** it under the terms of the GNU Lesser General Public License as published by
@@ -43,33 +43,33 @@ typedef struct
 	int frame_samples ;
 	double compression ;
 	int initialized : 1 ;
-} MPEG_ENC_PRIVATE ;
+} MPEG_L3_ENC_PRIVATE ;
 
 
 /*-----------------------------------------------------------------------------------------------
 ** Private function prototypes.
 */
 
-static int mpeg_encoder_close (SF_PRIVATE *psf) ;
-static int mpeg_encoder_construct (SF_PRIVATE *psf) ;
-static int mpeg_encoder_byterate (SF_PRIVATE *psf) ;
+static int mpeg_l3_encoder_close (SF_PRIVATE *psf) ;
+static int mpeg_l3_encoder_construct (SF_PRIVATE *psf) ;
+static int mpeg_l3_encoder_byterate (SF_PRIVATE *psf) ;
 
-static sf_count_t mpeg_encode_write_short_stereo (SF_PRIVATE *psf, const short *ptr, sf_count_t len) ;
-static sf_count_t mpeg_encode_write_int_stereo (SF_PRIVATE *psf, const int *ptr, sf_count_t len) ;
-static sf_count_t mpeg_encode_write_float_stereo (SF_PRIVATE *psf, const float *ptr, sf_count_t len) ;
-static sf_count_t mpeg_encode_write_double_stereo (SF_PRIVATE *psf, const double *ptr, sf_count_t len) ;
-static sf_count_t mpeg_encode_write_short_mono (SF_PRIVATE *psf, const short *ptr, sf_count_t len) ;
-static sf_count_t mpeg_encode_write_int_mono (SF_PRIVATE *psf, const int *ptr, sf_count_t len) ;
-static sf_count_t mpeg_encode_write_float_mono (SF_PRIVATE *psf, const float *ptr, sf_count_t len) ;
-static sf_count_t mpeg_encode_write_double_mono (SF_PRIVATE *psf, const double *ptr, sf_count_t len) ;
+static sf_count_t mpeg_l3_encode_write_short_stereo (SF_PRIVATE *psf, const short *ptr, sf_count_t len) ;
+static sf_count_t mpeg_l3_encode_write_int_stereo (SF_PRIVATE *psf, const int *ptr, sf_count_t len) ;
+static sf_count_t mpeg_l3_encode_write_float_stereo (SF_PRIVATE *psf, const float *ptr, sf_count_t len) ;
+static sf_count_t mpeg_l3_encode_write_double_stereo (SF_PRIVATE *psf, const double *ptr, sf_count_t len) ;
+static sf_count_t mpeg_l3_encode_write_short_mono (SF_PRIVATE *psf, const short *ptr, sf_count_t len) ;
+static sf_count_t mpeg_l3_encode_write_int_mono (SF_PRIVATE *psf, const int *ptr, sf_count_t len) ;
+static sf_count_t mpeg_l3_encode_write_float_mono (SF_PRIVATE *psf, const float *ptr, sf_count_t len) ;
+static sf_count_t mpeg_l3_encode_write_double_mono (SF_PRIVATE *psf, const double *ptr, sf_count_t len) ;
 
 /*-----------------------------------------------------------------------------------------------
 ** Exported functions.
 */
 
 int
-mpeg_encoder_init (SF_PRIVATE *psf, int info_tag)
-{	MPEG_ENC_PRIVATE* pmpeg = NULL ;
+mpeg_l3_encoder_init (SF_PRIVATE *psf, int info_tag)
+{	MPEG_L3_ENC_PRIVATE* pmpeg = NULL ;
 
 	if (psf->file.mode == SFM_RDWR)
 		return SFE_BAD_MODE_RW ;
@@ -77,7 +77,7 @@ mpeg_encoder_init (SF_PRIVATE *psf, int info_tag)
 	if (psf->file.mode != SFM_WRITE)
 		return SFE_INTERNAL ;
 
-	psf->codec_data = pmpeg = calloc (1, sizeof (MPEG_ENC_PRIVATE)) ;
+	psf->codec_data = pmpeg = calloc (1, sizeof (MPEG_L3_ENC_PRIVATE)) ;
 	if (!pmpeg)
 		return SFE_MALLOC_FAILED ;
 
@@ -102,37 +102,37 @@ mpeg_encoder_init (SF_PRIVATE *psf, int info_tag)
 		} ;
 
 	if (psf->sf.channels == 2)
-	{	psf->write_short	= mpeg_encode_write_short_stereo ;
-		psf->write_int		= mpeg_encode_write_int_stereo ;
-		psf->write_float	= mpeg_encode_write_float_stereo ;
-		psf->write_double	= mpeg_encode_write_double_stereo ;
+	{	psf->write_short	= mpeg_l3_encode_write_short_stereo ;
+		psf->write_int		= mpeg_l3_encode_write_int_stereo ;
+		psf->write_float	= mpeg_l3_encode_write_float_stereo ;
+		psf->write_double	= mpeg_l3_encode_write_double_stereo ;
 		}
 	else
-	{	psf->write_short	= mpeg_encode_write_short_mono ;
-		psf->write_int		= mpeg_encode_write_int_mono ;
-		psf->write_float	= mpeg_encode_write_float_mono ;
-		psf->write_double	= mpeg_encode_write_double_mono ;
+	{	psf->write_short	= mpeg_l3_encode_write_short_mono ;
+		psf->write_int		= mpeg_l3_encode_write_int_mono ;
+		psf->write_float	= mpeg_l3_encode_write_float_mono ;
+		psf->write_double	= mpeg_l3_encode_write_double_mono ;
 		}
 
 	psf->sf.seekable	= 0 ;
-	psf->codec_close	= mpeg_encoder_close ;
-	psf->byterate		= mpeg_encoder_byterate ;
+	psf->codec_close	= mpeg_l3_encoder_close ;
+	psf->byterate		= mpeg_l3_encoder_byterate ;
 	psf->dataoffset		= 0 ;
 	psf->datalength		= 0 ;
 
 	return 0 ;
-} /* mpeg_encoder_init */
+} /* mpeg_l3_encoder_init */
 
 int
-mpeg_encoder_write_id3tag (SF_PRIVATE *psf)
-{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE *) psf->codec_data ;
+mpeg_l3_encoder_write_id3tag (SF_PRIVATE *psf)
+{	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE *) psf->codec_data ;
 	unsigned char *id3v2_buffer ;
 	int i, id3v2_size ;
 
 	if (psf->have_written)
 		return 0 ;
 
-	if ((i = mpeg_encoder_construct (psf)))
+	if ((i = mpeg_l3_encoder_construct (psf)))
 		return i ;
 
 	if (psf_fseek (psf, 0, SEEK_SET) != 0)
@@ -192,8 +192,8 @@ mpeg_encoder_write_id3tag (SF_PRIVATE *psf)
 }
 
 int
-mpeg_encoder_set_quality (SF_PRIVATE *psf, double compression)
-{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE *) psf->codec_data ;
+mpeg_l3_encoder_set_quality (SF_PRIVATE *psf, double compression)
+{	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE *) psf->codec_data ;
 	int bitrate_mode ;
 	int bitrate ;
 	int ret ;
@@ -207,7 +207,7 @@ mpeg_encoder_set_quality (SF_PRIVATE *psf, double compression)
 	*/
 	pmpeg->compression = compression ;
 
-	bitrate_mode = mpeg_encoder_get_bitrate_mode (psf) ;
+	bitrate_mode = mpeg_l3_encoder_get_bitrate_mode (psf) ;
 	if (bitrate_mode == SF_BITRATE_MODE_VARIABLE)
 	{	ret = lame_set_VBR_quality (pmpeg->lamef, compression * 10.0) ;
 		}
@@ -237,11 +237,11 @@ mpeg_encoder_set_quality (SF_PRIVATE *psf, double compression)
 
 	psf_log_printf (psf, "Failed to set lame encoder quality.\n") ;
 	return SF_FALSE ;
-} /* mpeg_encoder_set_quality */
+} /* mpeg_l3_encoder_set_quality */
 
 int
-mpeg_encoder_set_bitrate_mode (SF_PRIVATE *psf, int mode)
-{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE *) psf->codec_data ;
+mpeg_l3_encoder_set_bitrate_mode (SF_PRIVATE *psf, int mode)
+{	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE *) psf->codec_data ;
 	enum vbr_mode_e vbr_mode ;
 
 	if (pmpeg->initialized)
@@ -260,16 +260,16 @@ mpeg_encoder_set_bitrate_mode (SF_PRIVATE *psf, int mode)
 
 	if (lame_set_VBR (pmpeg->lamef, vbr_mode) == LAME_OKAY)
 	{	/* Re-evaluate the compression setting. */
-		return mpeg_encoder_set_quality (psf, pmpeg->compression) ;
+		return mpeg_l3_encoder_set_quality (psf, pmpeg->compression) ;
 		} ;
 
 	psf_log_printf (psf, "Failed to set LAME vbr mode to %d.\n", vbr_mode) ;
 	return SF_FALSE ;
-} /* mpeg_encoder_set_bitrate_mode */
+} /* mpeg_l3_encoder_set_bitrate_mode */
 
 int
-mpeg_encoder_get_bitrate_mode (SF_PRIVATE *psf)
-{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE *) psf->codec_data ;
+mpeg_l3_encoder_get_bitrate_mode (SF_PRIVATE *psf)
+{	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE *) psf->codec_data ;
 	enum vbr_mode_e vbr_mode ;
 
 	vbr_mode = lame_get_VBR (pmpeg->lamef) ;
@@ -284,7 +284,7 @@ mpeg_encoder_get_bitrate_mode (SF_PRIVATE *psf)
 	/* Something is wrong. */
 	psf->error = SFE_INTERNAL ;
 	return -1 ;
-} /* mpeg_encoder_get_bitrate_mode */
+} /* mpeg_l3_encoder_get_bitrate_mode */
 
 
 /*-----------------------------------------------------------------------------------------------
@@ -292,8 +292,8 @@ mpeg_encoder_get_bitrate_mode (SF_PRIVATE *psf)
 */
 
 static int
-mpeg_encoder_close (SF_PRIVATE *psf)
-{	MPEG_ENC_PRIVATE* pmpeg = (MPEG_ENC_PRIVATE *) psf->codec_data ;
+mpeg_l3_encoder_close (SF_PRIVATE *psf)
+{	MPEG_L3_ENC_PRIVATE* pmpeg = (MPEG_L3_ENC_PRIVATE *) psf->codec_data ;
 	int ret, len ;
 	sf_count_t pos ;
 	unsigned char *buffer ;
@@ -319,9 +319,9 @@ mpeg_encoder_close (SF_PRIVATE *psf)
 	/*
 	** If possible, seek back and write the LAME/XING/Info headers. This
 	** contains information about the whole file and a seek table, and can
-	** only be written after encodeing.
+	** only be written after encoding.
 	**
-	** If enabled, Lame wrote an empty header at the begining of the data
+	** If enabled, Lame wrote an empty header at the beginning of the data
 	** that we now fill in.
 	*/
 	ret = lame_get_lametag_frame (pmpeg->lamef, 0, 0) ;
@@ -352,10 +352,10 @@ mpeg_encoder_close (SF_PRIVATE *psf)
 		} ;
 
 	return 0 ;
-} /* mpeg_encoder_close */
+} /* mpeg_l3_encoder_close */
 
 static void
-mpeg_encoder_log_config (SF_PRIVATE *psf, lame_t lamef)
+mpeg_l3_encoder_log_config (SF_PRIVATE *psf, lame_t lamef)
 {	const char *version ;
 	const char *chn_mode ;
 
@@ -398,11 +398,11 @@ mpeg_encoder_log_config (SF_PRIVATE *psf, lame_t lamef)
 
 	psf_log_printf (psf, "  Encoder delay     : %d\n", lame_get_encoder_delay (lamef)) ;
 	psf_log_printf (psf, "  Write INFO header : %d\n", lame_get_bWriteVbrTag (lamef)) ;
-} /* mpeg_encoder_log_config */
+} /* mpeg_l3_encoder_log_config */
 
 static int
-mpeg_encoder_construct (SF_PRIVATE *psf)
-{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE *) psf->codec_data ;
+mpeg_l3_encoder_construct (SF_PRIVATE *psf)
+{	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE *) psf->codec_data ;
 	int frame_samples_per_channel ;
 
 	if (pmpeg->initialized == SF_FALSE)
@@ -412,7 +412,7 @@ mpeg_encoder_construct (SF_PRIVATE *psf)
 			} ;
 
 		psf_log_printf (psf, "Initialized LAME encoder.\n") ;
-		mpeg_encoder_log_config (psf, pmpeg->lamef) ;
+		mpeg_l3_encoder_log_config (psf, pmpeg->lamef) ;
 
 		frame_samples_per_channel = lame_get_framesize (pmpeg->lamef) ;
 
@@ -422,7 +422,6 @@ mpeg_encoder_construct (SF_PRIVATE *psf)
 		 */
 		pmpeg->block_len = (frame_samples_per_channel * 4) / 3 + 7200 ;
 		pmpeg->frame_samples = frame_samples_per_channel * psf->sf.channels ;
-		//pmpeg->frame_samples = lame_get_maximum_number_of_samples (pmpeg->lamef, pmpeg->block_len) / psf->sf.channels ;
 
 		pmpeg->block = malloc (pmpeg->block_len) ;
 		if (!pmpeg->block)
@@ -432,23 +431,40 @@ mpeg_encoder_construct (SF_PRIVATE *psf)
 		} ;
 
 	return 0 ;
-} /* mpeg_encoder_construct */
+} /* mpeg_l3_encoder_construct */
 
 static int
-mpeg_encoder_byterate (SF_PRIVATE *psf)
-{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE *) psf->codec_data ;
+mpeg_l3_encoder_byterate (SF_PRIVATE *psf)
+{	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE *) psf->codec_data ;
+	int bitrate_mode ;
+	int byterate ;
+	float calculated_byterate ;
 
-	/* TODO: For VBR this returns the minimum byterate. */
-	return lame_get_brate (pmpeg->lamef) / 8 ;
-} /* mpeg_encoder_byterate */
+	bitrate_mode = mpeg_l3_encoder_get_bitrate_mode (psf) ;
+	byterate = (lame_get_brate (pmpeg->lamef) + 7) / 8 ;
+
+	if (bitrate_mode == SF_BITRATE_MODE_VARIABLE)
+	{	/*
+		** For VBR, lame_get_brate returns the minimum bitrate, so calculate the
+		** average byterate so far.
+		*/
+		calculated_byterate = psf_ftell (psf) - psf->dataoffset ;
+		calculated_byterate /= (float) psf->write_current ;
+		calculated_byterate *= (float) psf->sf.samplerate ;
+
+		return SF_MIN (byterate, (int) calculated_byterate) ;
+	}
+
+	return byterate ;
+} /* mpeg_l3_encoder_byterate */
 
 static sf_count_t
-mpeg_encode_write_short_mono (SF_PRIVATE *psf, const short *ptr, sf_count_t len)
-{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE*) psf->codec_data ;
+mpeg_l3_encode_write_short_mono (SF_PRIVATE *psf, const short *ptr, sf_count_t len)
+{	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE*) psf->codec_data ;
 	sf_count_t total = 0 ;
 	int nbytes, writecount, writen ;
 
-	if ((psf->error = mpeg_encoder_construct (psf)))
+	if ((psf->error = mpeg_l3_encoder_construct (psf)))
 		return 0 ;
 
 	while (len)
@@ -476,14 +492,14 @@ mpeg_encode_write_short_mono (SF_PRIVATE *psf, const short *ptr, sf_count_t len)
 
 
 static sf_count_t
-mpeg_encode_write_short_stereo (SF_PRIVATE *psf, const short *ptr, sf_count_t len)
+mpeg_l3_encode_write_short_stereo (SF_PRIVATE *psf, const short *ptr, sf_count_t len)
 {	BUF_UNION ubuf ;
-	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE*) psf->codec_data ;
+	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE*) psf->codec_data ;
 	sf_count_t total = 0 ;
 	int nbytes, writecount, writen ;
 	const sf_count_t max_samples = SF_MIN (ARRAY_LEN (ubuf.sbuf), pmpeg->frame_samples) ;
 
-	if ((psf->error = mpeg_encoder_construct (psf)))
+	if ((psf->error = mpeg_l3_encoder_construct (psf)))
 		return 0 ;
 
 	while (len)
@@ -515,12 +531,12 @@ mpeg_encode_write_short_stereo (SF_PRIVATE *psf, const short *ptr, sf_count_t le
 
 
 static sf_count_t
-mpeg_encode_write_int_mono (SF_PRIVATE *psf, const int *ptr, sf_count_t len)
-{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE*) psf->codec_data ;
+mpeg_l3_encode_write_int_mono (SF_PRIVATE *psf, const int *ptr, sf_count_t len)
+{	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE*) psf->codec_data ;
 	sf_count_t total = 0 ;
 	int nbytes, writecount, writen ;
 
-	if ((psf->error = mpeg_encoder_construct (psf)))
+	if ((psf->error = mpeg_l3_encoder_construct (psf)))
 		return 0 ;
 
 	while (len)
@@ -548,12 +564,12 @@ mpeg_encode_write_int_mono (SF_PRIVATE *psf, const int *ptr, sf_count_t len)
 
 
 static sf_count_t
-mpeg_encode_write_int_stereo (SF_PRIVATE *psf, const int *ptr, sf_count_t len)
-{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE*) psf->codec_data ;
+mpeg_l3_encode_write_int_stereo (SF_PRIVATE *psf, const int *ptr, sf_count_t len)
+{	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE*) psf->codec_data ;
 	sf_count_t total = 0 ;
 	int nbytes, writecount, writen ;
 
-	if ((psf->error = mpeg_encoder_construct (psf)))
+	if ((psf->error = mpeg_l3_encoder_construct (psf)))
 		return 0 ;
 
 	while (len)
@@ -581,12 +597,12 @@ mpeg_encode_write_int_stereo (SF_PRIVATE *psf, const int *ptr, sf_count_t len)
 
 
 static sf_count_t
-mpeg_encode_write_float_mono (SF_PRIVATE *psf, const float *ptr, sf_count_t len)
-{	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE*) psf->codec_data ;
+mpeg_l3_encode_write_float_mono (SF_PRIVATE *psf, const float *ptr, sf_count_t len)
+{	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE*) psf->codec_data ;
 	sf_count_t total = 0 ;
 	int nbytes, writecount, writen ;
 
-	if ((psf->error = mpeg_encoder_construct (psf)))
+	if ((psf->error = mpeg_l3_encoder_construct (psf)))
 		return 0 ;
 
 	while (len)
@@ -625,14 +641,14 @@ normalize_float (float *dest, const float *src, sf_count_t count, float norm_fac
 
 
 static sf_count_t
-mpeg_encode_write_float_stereo (SF_PRIVATE *psf, const float *ptr, sf_count_t len)
+mpeg_l3_encode_write_float_stereo (SF_PRIVATE *psf, const float *ptr, sf_count_t len)
 {	BUF_UNION ubuf ;
-	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE*) psf->codec_data ;
+	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE*) psf->codec_data ;
 	sf_count_t total = 0 ;
 	int nbytes, writecount, writen ;
 	const sf_count_t max_samples = SF_MIN (ARRAY_LEN (ubuf.fbuf), pmpeg->frame_samples) ;
 
-	if ((psf->error = mpeg_encoder_construct (psf)))
+	if ((psf->error = mpeg_l3_encoder_construct (psf)))
 		return 0 ;
 
 	while (len)
@@ -675,14 +691,14 @@ normalize_double (double *dest, const double *src, sf_count_t count, double norm
 
 
 static sf_count_t
-mpeg_encode_write_double_mono (SF_PRIVATE *psf, const double *ptr, sf_count_t len)
+mpeg_l3_encode_write_double_mono (SF_PRIVATE *psf, const double *ptr, sf_count_t len)
 {	BUF_UNION ubuf ;
-	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE*) psf->codec_data ;
+	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE*) psf->codec_data ;
 	sf_count_t total = 0 ;
 	int nbytes, writecount, writen ;
 	const sf_count_t max_samples = SF_MIN (ARRAY_LEN (ubuf.dbuf), pmpeg->frame_samples) ;
 
-	if ((psf->error = mpeg_encoder_construct (psf)))
+	if ((psf->error = mpeg_l3_encoder_construct (psf)))
 		return 0 ;
 
 	while (len)
@@ -717,14 +733,14 @@ mpeg_encode_write_double_mono (SF_PRIVATE *psf, const double *ptr, sf_count_t le
 
 
 static sf_count_t
-mpeg_encode_write_double_stereo (SF_PRIVATE *psf, const double *ptr, sf_count_t len)
+mpeg_l3_encode_write_double_stereo (SF_PRIVATE *psf, const double *ptr, sf_count_t len)
 {	BUF_UNION ubuf ;
-	MPEG_ENC_PRIVATE *pmpeg = (MPEG_ENC_PRIVATE*) psf->codec_data ;
+	MPEG_L3_ENC_PRIVATE *pmpeg = (MPEG_L3_ENC_PRIVATE*) psf->codec_data ;
 	sf_count_t total = 0 ;
 	int nbytes, writecount, writen ;
 	const sf_count_t max_samples = SF_MIN (ARRAY_LEN (ubuf.dbuf), pmpeg->frame_samples) ;
 
-	if ((psf->error = mpeg_encoder_construct (psf)))
+	if ((psf->error = mpeg_l3_encoder_construct (psf)))
 		return 0 ;
 
 	while (len)
@@ -760,9 +776,9 @@ mpeg_encode_write_double_stereo (SF_PRIVATE *psf, const double *ptr, sf_count_t 
 #else /* ENABLE_EXPERIMENTAL_CODE && HAVE_MPEG */
 
 int
-mpeg_encoder_init (SF_PRIVATE *psf, int UNUSED (vbr))
-{	psf_log_printf (psf, "This version of libsndfile was compiled without MP3 encoding support.\n") ;
+mpeg_l3_encoder_init (SF_PRIVATE *psf, int UNUSED (vbr))
+{	psf_log_printf (psf, "This version of libsndfile was compiled without MPEG Layer 3 encoding support.\n") ;
 	return SFE_UNIMPLEMENTED ;
-} /* mpeg_encoder_init */
+} /* mpeg_l3_encoder_init */
 
 #endif

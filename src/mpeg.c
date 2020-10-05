@@ -41,11 +41,11 @@ mpeg_open (SF_PRIVATE *psf)
 		return SFE_BAD_MODE_RW ;
 
 	if (psf->file.mode == SFM_WRITE)
-	{	if ((error = mpeg_encoder_init (psf, SF_TRUE)))
+	{	if ((error = mpeg_l3_encoder_init (psf, SF_TRUE)))
 			return error ;
 
 		/* Choose variable bitrate mode by default for standalone (mp3) files.*/
-		mpeg_encoder_set_bitrate_mode (psf, SF_BITRATE_MODE_VARIABLE) ;
+		mpeg_l3_encoder_set_bitrate_mode (psf, SF_BITRATE_MODE_VARIABLE) ;
 
 		/* ID3 support */
 		psf->strings.flags = SF_STR_ALLOW_START ;
@@ -70,7 +70,7 @@ mpeg_write_header (SF_PRIVATE *psf, int UNUSED (calc_length))
 	if (psf->have_written)
 		return 0 ;
 
-	return mpeg_encoder_write_id3tag (psf) ;
+	return mpeg_l3_encoder_write_id3tag (psf) ;
 } ;
 
 static int
@@ -87,7 +87,7 @@ mpeg_command (SF_PRIVATE *psf, int command, void *data, int datasize)
 			{	psf->error = SFE_NOT_WRITEMODE ;
 				return SF_FALSE ;
 				} ;
-			return mpeg_encoder_set_quality (psf, *(double *) data) ;
+			return mpeg_l3_encoder_set_quality (psf, *(double *) data) ;
 
 		case SFC_SET_BITRATE_MODE :
 			if (psf->file.mode != SFM_WRITE)
@@ -102,13 +102,13 @@ mpeg_command (SF_PRIVATE *psf, int command, void *data, int datasize)
 			/* Choose variable bitrate mode by default for standalone (mp3) files.*/
 			if (bitrate_mode == SF_BITRATE_MODE_FILE)
 				bitrate_mode = SF_BITRATE_MODE_VARIABLE ;
-			return mpeg_encoder_set_bitrate_mode (psf, bitrate_mode) ;
+			return mpeg_l3_encoder_set_bitrate_mode (psf, bitrate_mode) ;
 
 		case SFC_GET_BITRATE_MODE :
 			if (psf->file.mode == SFM_READ)
 				return mpeg_decoder_get_bitrate_mode (psf) ;
 			else
-				return mpeg_encoder_get_bitrate_mode (psf) ;
+				return mpeg_l3_encoder_get_bitrate_mode (psf) ;
 
 		default :
 			return SF_FALSE ;
