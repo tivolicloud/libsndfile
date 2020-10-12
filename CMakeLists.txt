@@ -241,6 +241,7 @@ add_library (sndfile
 	src/ogg.c
 	src/chanmap.h
 	src/chanmap.c
+	src/id3.h
 	src/id3.c
 	$<$<BOOL:${WIN32}>:src/windows.c>
 	$<$<AND:$<BOOL:${WIN32}>,$<BOOL:${BUILD_SHARED_LIBS}>>:src/version-metadata.rc>
@@ -279,6 +280,7 @@ add_library (sndfile
 	src/ogg_speex.c
 	src/ogg_pcm.c
 	src/ogg_opus.c
+	src/ogg_vcomment.h
 	src/ogg_vcomment.c
 	src/nms_adpcm.c
 	src/mp3.c
