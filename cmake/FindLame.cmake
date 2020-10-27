@@ -54,9 +54,12 @@ if (LAME_FOUND)
 		add_library (Lame::Lame UNKNOWN IMPORTED)
 		set_target_properties (Lame::Lame PROPERTIES
 			INTERFACE_INCLUDE_DIRECTORIES "${LAME_INCLUDE_DIRS}"
-			INTERFACE_LINK_LIBRARIES "${LAME_HIP_LIBRARY}"
 			IMPORTED_LOCATION "${LAME_LIBRARY}"
 		)
+		if (LAME_HIP_LIBRARY)
+			set_property (TARGET Lame::Lame APPEND PROPERTY
+				INTERFACE_LINK_LIBRARIES "${LAME_HIP_LIBRARY}")
+		endif ()
 	endif ()
 endif ()
 
