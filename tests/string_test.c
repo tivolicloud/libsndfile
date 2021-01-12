@@ -115,7 +115,7 @@ main (int argc, char *argv [])
 
 	if (do_all || ! strcmp (argv [1], "mpeg"))
 	{	if (HAVE_MPEG)
-			string_start_test ("mpeg.mp3", SF_FORMAT_MP3 | SF_FORMAT_MPEG_LAYER_III) ;
+			string_start_test ("mpeg.mp3", SF_FORMAT_MPEG | SF_FORMAT_MPEG_LAYER_III) ;
 		else
 			puts ("    No MP3 tests because MPEG support was not compiled in.") ;
 		test_count++ ;
@@ -380,7 +380,7 @@ string_start_test (const char *filename, int formattype)
 			break ;
 
 		case SF_FORMAT_OGG | SF_FORMAT_VORBIS :
-		case SF_FORMAT_MP3 | SF_FORMAT_MPEG_LAYER_III :
+		case SF_FORMAT_MPEG | SF_FORMAT_MPEG_LAYER_III :
 			break ;
 
 		default :
@@ -399,7 +399,7 @@ string_start_test (const char *filename, int formattype)
 	sf_set_string (file, SF_STR_COMMENT, comment) ;
 	sf_set_string (file, SF_STR_ALBUM, album) ;
 	sf_set_string (file, SF_STR_LICENSE, license) ;
-	if (typemajor == SF_FORMAT_MP3)
+	if (typemajor == SF_FORMAT_MPEG)
 	{	sf_set_string (file, SF_STR_GENRE, id3v1_genre) ;
 		sf_set_string (file, SF_STR_DATE, year) ;
 		}
@@ -428,7 +428,7 @@ string_start_test (const char *filename, int formattype)
 		printf ("    Bad filename  : %s\n", cptr) ;
 		} ;
 
-	if (typemajor != SF_FORMAT_MP3)
+	if (typemajor != SF_FORMAT_MPEG)
 	{	cptr = sf_get_string (file, SF_STR_COPYRIGHT) ;
 		if (cptr == NULL || strcmp (copyright, cptr) != 0)
 		{	if (errors++ == 0)
@@ -450,7 +450,7 @@ string_start_test (const char *filename, int formattype)
 			} ;
 		} ;
 
-	if (typemajor == SF_FORMAT_MP3)
+	if (typemajor == SF_FORMAT_MPEG)
 	{	cptr = sf_get_string (file, SF_STR_GENRE) ;
 		if (cptr == NULL || strcmp (id3v1_genre, cptr) != 0)
 		{	if (errors++ == 0)
@@ -478,7 +478,7 @@ string_start_test (const char *filename, int formattype)
 			/* not supported */
 			break ;
 
-		case SF_FORMAT_MP3 :
+		case SF_FORMAT_MPEG :
 			/* id3 only supports years */
 			cptr = sf_get_string (file, SF_STR_DATE) ;
 			if (cptr == NULL || strcmp (year, cptr) != 0)
@@ -511,7 +511,7 @@ string_start_test (const char *filename, int formattype)
 	{	case SF_FORMAT_WAV :
 		case SF_FORMAT_AIFF :
 		case SF_FORMAT_RF64 :
-		case SF_FORMAT_MP3 :
+		case SF_FORMAT_MPEG :
 			/* not supported */
 			break ;
 
